@@ -21,18 +21,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply unified design system
+# Apply styling & sidebar
 apply_custom_css()
 render_sidebar_header()
 
-# -------------------------------------------------------------
-# HEADER
-# -------------------------------------------------------------
-st.markdown('<div class="page-title">Match Performance Prediction</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="page-subtitle">Forecast individual player performance using historical match data.</div>',
-    unsafe_allow_html=True
-)
+# Header
+st.title("Match Performance Prediction")
+st.caption("Forecast individual player match performance using historical data and regression models.")
 st.divider()
 
 # Load metadata
@@ -43,7 +38,7 @@ all_venues = metadata.get("venues", [])
 # -------------------------------------------------------------
 # 1. PLAYER SELECTION
 # -------------------------------------------------------------
-st.markdown('<div class="section-title">Player Selection</div>', unsafe_allow_html=True)
+st.subheader("1. Player Selection")
 
 col_role, col_player = st.columns([1, 2])
 
@@ -54,7 +49,7 @@ with col_role:
 available_players = metadata.get("batters" if role_key == "batter" else "bowlers", [])
 
 if not available_players:
-    st.error("No player data found in processed dataset. Please ensure data files are present.")
+    st.error("No player data found in processed dataset. Please verify artifacts path.")
     st.stop()
 
 # Default selection
@@ -65,25 +60,25 @@ default_index = available_players.index(default_player_name) if default_player_n
 
 with col_player:
     selected_player = st.selectbox(
-        "Player",
+        "Select Player",
         available_players,
         index=default_index,
-        help="Select a player from the historical database."
+        help="Type or select a player name from the database."
     )
 
-# Retrieve historical stats for the selected player
+# Retrieve historical stats for the selected player (unified calculation)
 player_stats = get_player_stats(selected_player, role_key, PROJECT_ROOT)
 
 if not player_stats:
-    st.warning(f"No historical records found for {selected_player}.")
+    st.warning(f"No historical match records found for {selected_player}.")
     st.stop()
 
 # -------------------------------------------------------------
 # 2. MATCH CONTEXT
 # -------------------------------------------------------------
-st.markdown('<div class="section-title">Match Context</div>', unsafe_allow_html=True)
+st.subheader("2. Match Context")
 
-col_t1, col_t2, col_v = st.columns(3)
+col_t1, col_t2, col_v = st.columns([1, 1, 1.2])
 
 last_team = player_stats.get("last_team", "")
 last_opp = player_stats.get("last_opponent", "")
@@ -111,16 +106,13 @@ with col_v:
     venue = st.selectbox("Match Venue", all_venues, index=ven_idx)
 
 if player_team == opponent_team:
-    st.warning("Note: Selected player team and opponent team are the same.")
+    st.warning("Note: Selected player team and opponent team are identical.")
 
 # -------------------------------------------------------------
 # 3. HISTORICAL FORM METRICS
 # -------------------------------------------------------------
-st.markdown('<div class="section-title">Historical Form Parameters</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="section-subtitle">Auto-filled based on player match history (editable for scenario modeling):</div>',
-    unsafe_allow_html=True
-)
+st.subheader("3. Historical Form Parameters")
+st.caption("Auto-filled from player match history. You can adjust these values for custom scenario testing:")
 
 col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
@@ -146,7 +138,7 @@ else:
 st.write("")
 
 # -------------------------------------------------------------
-# 4. PREDICTION GENERATION
+# 4. PREDICTION ACTION
 # -------------------------------------------------------------
 predict_btn = st.button("Generate Prediction", type="primary")
 
@@ -169,6 +161,7 @@ if predict_btn:
             primary_benchmark = career_avg
             metric_label = "Expected Runs"
             val_format = f"{predicted_val:.1f} Runs"
+            model_info = "CatBoost Regressor (Trained on IPL Batting Deliveries, Test MAE: 16.92)"
         else:
             input_features = {
                 "bowler": selected_player,
@@ -184,15 +177,21 @@ if predict_btn:
             primary_benchmark = career_wkt_avg
             metric_label = "Expected Wickets"
             val_format = f"{predicted_val:.2f} Wickets"
+            model_info = "CatBoost Regressor (Trained on IPL Bowling Deliveries, Test MAE: 0.84)"
 
-        # Result Presentation
+        st.divider()
+
+        # Prediction Result Container
         st.markdown(f"""
         <div class="result-container">
             <div class="result-player-name">{selected_player}</div>
-            <div class="result-metric-label">{metric_label} (Next Match)</div>
+            <div class="result-metric-label">{metric_label} (Forecast for Upcoming Fixture)</div>
             <div class="result-metric-val">{val_format}</div>
-            <div style="font-size: 0.875rem; color: #475569;">
+            <div style="font-size: 0.85rem; color: #475569;">
                 Matchup: <strong>{player_team}</strong> vs <strong>{opponent_team}</strong> &bull; Venue: <strong>{venue}</strong>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748B; margin-top: 0.35rem;">
+                Model: {model_info}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -226,26 +225,25 @@ if predict_btn:
         # -------------------------------------------------------------
         recent_history = player_stats.get("recent_history", [])
         if recent_history:
-            st.markdown('<div class="section-title">Recent Form Trend & Forecast Projection</div>', unsafe_allow_html=True)
+            st.subheader(f"Recent Match History vs Forecast ({selected_player})")
             hist_df = pd.DataFrame(recent_history).sort_values("date")
             y_col = "runs" if role_key == "batter" else "wickets"
 
-            # Create clean sequence labels
-            match_labels = [f"Match {i+1} ({row['date'][:10]})" for i, row in hist_df.reset_index().iterrows()]
+            match_labels = [f"M{i+1} ({row['date'][:10]})" for i, row in hist_df.reset_index().iterrows()]
             
             fig = go.Figure()
 
-            # Past match performance
+            # Past match line
             fig.add_trace(go.Scatter(
                 x=match_labels,
                 y=hist_df[y_col],
                 mode="lines+markers",
-                name="Historical Match Output",
+                name="Actual Match Output",
                 line=dict(color="#006699", width=2.5),
                 marker=dict(size=6, color="#004C73")
             ))
 
-            # Predicted value point
+            # Forecast point
             fig.add_trace(go.Scatter(
                 x=["Next Match (Forecast)"],
                 y=[predicted_val],
@@ -255,9 +253,9 @@ if predict_btn:
             ))
 
             layout_config = get_plotly_layout(
-                title=f"{selected_player} — Historical Performance vs Model Projection",
+                title=f"{selected_player} — Historical Output Timeline vs Next Match Projection",
                 height=380,
-                xaxis_title="Recent Match Timeline",
+                xaxis_title="Recent Match Sequence (Oldest → Latest)",
                 yaxis_title=metric_label
             )
             fig.update_layout(**layout_config)
@@ -268,11 +266,11 @@ if predict_btn:
             st.plotly_chart(fig, use_container_width=True)
 
         # -------------------------------------------------------------
-        # 6. INPUT AUDIT SUMMARY
+        # 6. INPUT AUDIT TABLE
         # -------------------------------------------------------------
-        with st.expander("Model Input Features (Verification Summary)"):
+        with st.expander("Model Input Features (Audit Table)"):
             audit_df = pd.DataFrame(list(input_features.items()), columns=["Feature Parameter", "Input Value"])
-            st.dataframe(audit_df, use_container_width=True)
+            st.dataframe(audit_df, use_container_width=True, hide_index=True)
 
     except Exception as e:
         st.error(f"Error executing prediction: {str(e)}")

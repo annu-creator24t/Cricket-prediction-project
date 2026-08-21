@@ -114,30 +114,33 @@ def get_player_stats(player_name: str, role: str, base_dir: Optional[str] = None
     history_records = player_df.tail(15).to_dict(orient="records")
 
     if role == "batter":
+        runs_series = player_df["runs"].astype(float)
         return {
             "player": player_name,
             "role": "batter",
             "last_team": latest_row.get("batting_team", ""),
             "last_opponent": latest_row.get("bowling_team", ""),
             "last_venue": latest_row.get("venue", ""),
-            "prev_runs": float(latest_row.get("runs", 0)),
-            "last_5_avg": float(latest_row.get("last_5_avg", player_df["runs"].tail(5).mean())),
-            "last_10_avg": float(latest_row.get("last_10_avg", player_df["runs"].tail(10).mean())),
-            "career_avg": float(latest_row.get("career_avg", player_df["runs"].mean())),
+            "prev_runs": float(latest_row.get("runs", 0.0)),
+            "last_5_avg": float(runs_series.tail(5).mean()),
+            "last_10_avg": float(runs_series.tail(10).mean()),
+            "career_avg": float(runs_series.mean()),
             "total_matches": len(player_df),
             "recent_history": history_records
         }
     else:
+        wkts_series = player_df["wickets"].astype(float)
         return {
             "player": player_name,
             "role": "bowler",
             "last_team": latest_row.get("bowling_team", ""),
             "last_opponent": latest_row.get("batting_team", ""),
             "last_venue": latest_row.get("venue", ""),
-            "prev_wickets": float(latest_row.get("wickets", 0)),
-            "last_5_wkts": float(latest_row.get("last_5_wkts", player_df["wickets"].tail(5).mean())),
-            "last_10_wkts": float(latest_row.get("last_10_wkts", player_df["wickets"].tail(10).mean())),
-            "career_wkt_avg": float(latest_row.get("career_wkt_avg", player_df["wickets"].mean())),
+            "prev_wickets": float(latest_row.get("wickets", 0.0)),
+            "last_5_wkts": float(wkts_series.tail(5).mean()),
+            "last_10_wkts": float(wkts_series.tail(10).mean()),
+            "career_wkt_avg": float(wkts_series.mean()),
             "total_matches": len(player_df),
             "recent_history": history_records
         }
+

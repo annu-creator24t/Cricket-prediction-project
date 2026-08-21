@@ -11,6 +11,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from src.components.predictor import get_player_stats, load_dataset_metadata
 from app.ui_theme import apply_custom_css, render_sidebar_header, render_sidebar_footer, get_plotly_layout
 
 # Page Configuration
@@ -21,24 +22,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply unified design system
+# Apply styling & sidebar
 apply_custom_css()
 render_sidebar_header()
 
-# -------------------------------------------------------------
-# HEADER
-# -------------------------------------------------------------
-st.markdown('<div class="page-title">Player Performance Analytics</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="page-subtitle">Historical performance, recent form and match-level insights.</div>',
-    unsafe_allow_html=True
-)
+# Header
+st.title("Player Performance Analytics")
+st.caption("Historical performance, recent form, match-level breakdowns, and model explainability.")
 st.divider()
 
 # -------------------------------------------------------------
 # 1. PLAYER SELECTION
 # -------------------------------------------------------------
-st.markdown('<div class="section-title">Player Selection</div>', unsafe_allow_html=True)
+st.subheader("1. Player Selection")
 
 col_role, col_player = st.columns([1, 2])
 
@@ -52,7 +48,7 @@ summary_path = os.path.join(PROJECT_ROOT, "artifacts", "shap", f"{role_key}_shap
 importance_path = os.path.join(PROJECT_ROOT, "artifacts", "shap", f"{role_key}_shap_importance.png")
 
 if not os.path.exists(data_path):
-    st.error(f"Dataset not found at `{data_path}`. Please verify processed data artifacts.")
+    st.error(f"Dataset not found at `{data_path}`. Please verify artifacts path.")
     st.stop()
 
 df = pd.read_csv(data_path)
@@ -68,26 +64,28 @@ default_player = "V Kohli" if role_key == "batter" and "V Kohli" in available_pl
 default_idx = available_players.index(default_player) if default_player in available_players else 0
 
 with col_player:
-    player = st.selectbox("Player", available_players, index=default_idx)
+    player = st.selectbox("Select Player", available_players, index=default_idx)
 
+# Use unified stats computation
+player_stats = get_player_stats(player, role_key, PROJECT_ROOT)
 player_df = df[df[player_col] == player].sort_values("date")
 
-if len(player_df) < 3:
-    st.warning("Insufficient match history for detailed statistical analytics (minimum 3 matches required).")
+if len(player_df) < 3 or not player_stats:
+    st.warning("Insufficient match history for detailed statistical analysis (minimum 3 matches required).")
     st.stop()
 
 # -------------------------------------------------------------
 # 2. PERFORMANCE SNAPSHOT
 # -------------------------------------------------------------
-st.markdown(f'<div class="section-title">Performance Snapshot — {player}</div>', unsafe_allow_html=True)
+st.subheader(f"2. Performance Snapshot — {player}")
 
-last_match_val = player_df[value_col].iloc[-1]
-last_5_avg = player_df.tail(5)[value_col].mean()
-last_10_avg = player_df.tail(10)[value_col].mean()
-career_avg = player_df[value_col].mean()
+last_match_val = player_stats["prev_runs"] if role_key == "batter" else player_stats["prev_wickets"]
+last_5_avg = player_stats["last_5_avg"] if role_key == "batter" else player_stats["last_5_wkts"]
+last_10_avg = player_stats["last_10_avg"] if role_key == "batter" else player_stats["last_10_wkts"]
+career_avg = player_stats["career_avg"] if role_key == "batter" else player_stats["career_wkt_avg"]
 
 k1, k2, k3, k4 = st.columns(4)
-k1.metric("Last Match", f"{last_match_val:.0f} {unit_label}")
+k1.metric("Last Match Score", f"{last_match_val:.0f} {unit_label}")
 k2.metric("Last 5 Matches Avg", f"{last_5_avg:.2f} {unit_label}")
 k3.metric("Last 10 Matches Avg", f"{last_10_avg:.2f} {unit_label}")
 k4.metric("Career Average", f"{career_avg:.2f} {unit_label}")
@@ -100,7 +98,7 @@ st.write("")
 col_trend, col_dist = st.columns(2)
 
 with col_trend:
-    st.markdown('<div class="section-title">Recent Match Trend (Last 15 Fixtures)</div>', unsafe_allow_html=True)
+    st.subheader("Recent Match Trend (Last 15 Fixtures)")
     trend_df = player_df.tail(15).copy()
     trend_df["match_seq"] = [f"M{i+1}" for i in range(len(trend_df))]
     
@@ -119,7 +117,7 @@ with col_trend:
     )
     layout1 = get_plotly_layout(
         title=f"{player} — Match Output Timeline",
-        height=360,
+        height=350,
         xaxis_title="Match Sequence (Recent 15 Matches)",
         yaxis_title=unit_label
     )
@@ -127,7 +125,7 @@ with col_trend:
     st.plotly_chart(fig1, use_container_width=True)
 
 with col_dist:
-    st.markdown('<div class="section-title">Performance Distribution</div>', unsafe_allow_html=True)
+    st.subheader("Performance Distribution")
     fig2 = px.histogram(
         player_df,
         x=value_col,
@@ -141,7 +139,7 @@ with col_dist:
     )
     layout2 = get_plotly_layout(
         title=f"{player} — Score Frequency Distribution",
-        height=360,
+        height=350,
         xaxis_title=f"{unit_label} Scored per Match",
         yaxis_title="Match Count"
     )
@@ -154,7 +152,7 @@ with col_dist:
 col_venue, col_opp = st.columns(2)
 
 with col_venue:
-    st.markdown('<div class="section-title">Top Venues by Average Output</div>', unsafe_allow_html=True)
+    st.subheader("Top Venues by Average Output")
     venue_avg = (
         player_df.groupby("venue")[value_col]
         .agg(["mean", "count"])
@@ -174,7 +172,7 @@ with col_venue:
     fig3.update_traces(marker_color="#006699")
     layout3 = get_plotly_layout(
         title=f"Highest Average Venues (Top 8)",
-        height=360,
+        height=350,
         xaxis_title="Stadium Venue",
         yaxis_title=f"Average {unit_label}"
     )
@@ -183,7 +181,7 @@ with col_venue:
     st.plotly_chart(fig3, use_container_width=True)
 
 with col_opp:
-    st.markdown('<div class="section-title">Opposition Breakdown</div>', unsafe_allow_html=True)
+    st.subheader("Opposition Breakdown")
     opp_avg = (
         player_df.groupby(opponent_col)[value_col]
         .agg(["mean", "count"])
@@ -203,7 +201,7 @@ with col_opp:
     fig4.update_traces(marker_color="#0369A1")
     layout4 = get_plotly_layout(
         title=f"Performance vs Franchise Opponents",
-        height=360,
+        height=350,
         xaxis_title="Opponent Team",
         yaxis_title=f"Average {unit_label}"
     )
@@ -214,7 +212,7 @@ with col_opp:
 # -------------------------------------------------------------
 # 5. CONSISTENCY & MOMENTUM
 # -------------------------------------------------------------
-st.markdown('<div class="section-title">Consistency & Form Momentum</div>', unsafe_allow_html=True)
+st.subheader("5. Form Volatility & Momentum Analysis")
 
 std_dev = player_df[value_col].std()
 momentum = last_5_avg - last_10_avg
@@ -232,20 +230,20 @@ c2.metric(
 )
 
 if momentum > 0:
-    st.success(f"**Positive Momentum**: {player}'s last 5 matches average is trending +{momentum:.2f} above their 10-match baseline.")
+    st.success(f"**Positive Momentum**: {player}'s last 5 matches average ({last_5_avg:.2f}) is trending +{momentum:.2f} above their 10-match baseline ({last_10_avg:.2f}).")
 else:
-    st.info(f"**Neutral / Consolidating Momentum**: {player}'s last 5 matches average is tracking {momentum:.2f} relative to their 10-match baseline.")
+    st.info(f"**Neutral / Consolidating Momentum**: {player}'s last 5 matches average ({last_5_avg:.2f}) is tracking {momentum:.2f} relative to their 10-match baseline ({last_10_avg:.2f}).")
 
 st.divider()
 
 # -------------------------------------------------------------
 # 6. MODEL INSIGHTS (SHAP EXPLAINABILITY)
 # -------------------------------------------------------------
-st.markdown('<div class="section-title">Model Insights</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="section-subtitle">Feature contribution to the model prediction (SHAP TreeExplainer Attribution).</div>',
-    unsafe_allow_html=True
-)
+st.subheader("6. Model Insights (SHAP Explainability)")
+st.markdown("""
+SHAP (SHapley Additive exPlanations) values show how much each feature (such as recent 5-match form, career average, opposing team, and match venue) 
+contributed to increasing or decreasing the regression model's prediction relative to the baseline dataset average.
+""")
 
 colA, colB = st.columns(2)
 
@@ -254,7 +252,7 @@ if os.path.exists(summary_path):
         st.markdown("**SHAP Feature Impact Distribution**")
         st.image(
             Image.open(summary_path),
-            caption=f"{role} Regression Model — Feature Value Distribution Impact",
+            caption=f"{role} Model — Feature Impact Distribution (Top 10 Named Drivers)",
             use_container_width=True
         )
 else:
@@ -265,7 +263,7 @@ if os.path.exists(importance_path):
         st.markdown("**Mean Feature Importance Ranking**")
         st.image(
             Image.open(importance_path),
-            caption=f"{role} Regression Model — Global Feature Ranking",
+            caption=f"{role} Model — Mean Absolute SHAP Importance Ranking",
             use_container_width=True
         )
 else:

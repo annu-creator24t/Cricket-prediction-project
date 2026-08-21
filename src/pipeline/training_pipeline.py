@@ -151,29 +151,57 @@ class ModelTrainer:
         print(f"\nBest Model for {role_name}: {best_model_name}")
 
         # ---------------- SHAP EXPLAINABILITY ----------------
-        print("Generating SHAP plots...")
+        print("Generating SHAP plots with named features...")
 
         preprocessor_fitted = best_pipeline.named_steps["preprocessor"]
         model_fitted = best_pipeline.named_steps["model"]
 
+        raw_feature_names = preprocessor_fitted.get_feature_names_out()
+        if role_name == "batter":
+            clean_names = [
+                f.replace("cat__batsman_", "Batter: ")
+                 .replace("cat__batting_team_", "Team: ")
+                 .replace("cat__bowling_team_", "Opponent: ")
+                 .replace("cat__venue_", "Venue: ")
+                 .replace("num__", "")
+                 .replace("_", " ")
+                for f in raw_feature_names
+            ]
+        else:
+            clean_names = [
+                f.replace("cat__bowler_", "Bowler: ")
+                 .replace("cat__bowling_team_", "Team: ")
+                 .replace("cat__batting_team_", "Opponent: ")
+                 .replace("cat__venue_", "Venue: ")
+                 .replace("num__", "")
+                 .replace("_", " ")
+                for f in raw_feature_names
+            ]
+
         X_test_transformed = preprocessor_fitted.transform(X_test)
 
         explainer = shap.TreeExplainer(model_fitted)
-        shap_values = explainer.shap_values(X_test_transformed)
+        sample_size = min(300, X_test_transformed.shape[0])
+        sample_idx = np.random.RandomState(42).choice(X_test_transformed.shape[0], sample_size, replace=False)
+        X_sample = X_test_transformed[sample_idx]
+        shap_values = explainer.shap_values(X_sample)
 
         os.makedirs("artifacts/shap", exist_ok=True)
 
-        plt.figure()
-        shap.summary_plot(shap_values, X_test_transformed, show=False)
+        plt.figure(figsize=(9, 6), dpi=150)
+        shap.summary_plot(shap_values, X_sample, feature_names=clean_names, max_display=10, show=False)
+        plt.title(f"{role_name.capitalize()} Model — Top Feature Impact Distribution (SHAP)", fontsize=12, pad=12)
         plt.tight_layout()
-        plt.savefig(f"artifacts/shap/{role_name}_shap_summary.png")
+        plt.savefig(f"artifacts/shap/{role_name}_shap_summary.png", bbox_inches="tight")
         plt.close()
 
-        plt.figure()
-        shap.summary_plot(shap_values, X_test_transformed, plot_type="bar", show=False)
+        plt.figure(figsize=(9, 6), dpi=150)
+        shap.summary_plot(shap_values, X_sample, feature_names=clean_names, plot_type="bar", max_display=10, show=False)
+        plt.title(f"{role_name.capitalize()} Model — Mean Absolute SHAP Feature Importance", fontsize=12, pad=12)
         plt.tight_layout()
-        plt.savefig(f"artifacts/shap/{role_name}_shap_importance.png")
+        plt.savefig(f"artifacts/shap/{role_name}_shap_importance.png", bbox_inches="tight")
         plt.close()
+
 
         # ---------------- SAVE BEST MODEL ----------------
         joblib.dump(

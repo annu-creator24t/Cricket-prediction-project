@@ -159,26 +159,26 @@ def apply_custom_css():
             font-size: 0.85rem;
             font-weight: 700;
             color: #006699;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
             margin-bottom: 0.15rem;
         }
 
         .sidebar-brand-sub {
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: #0F172A;
             line-height: 1.2;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.35rem;
         }
 
         .sidebar-badge {
             display: inline-block;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            background-color: #E2E8F0;
-            color: #475569;
-            padding: 2px 8px;
+            background-color: #E0F2FE;
+            color: #0369A1;
+            padding: 3px 8px;
             border-radius: 4px;
             margin-bottom: 1rem;
         }
@@ -188,8 +188,12 @@ def apply_custom_css():
             padding-top: 1rem;
             border-top: 1px solid #E2E8F0;
             font-size: 0.75rem;
-            color: #94A3B8;
-            line-height: 1.4;
+            color: #64748B;
+            line-height: 1.5;
+        }
+
+        .sidebar-footer strong {
+            color: #334155;
         }
 
         /* Streamlit native metric card enhancement */
@@ -210,7 +214,7 @@ def apply_custom_css():
         }
 
         div[data-testid="stMetricValue"] div {
-            font-size: 1.4rem !important;
+            font-size: 1.35rem !important;
             font-weight: 700 !important;
             color: #0F172A !important;
         }
@@ -238,23 +242,12 @@ def apply_custom_css():
             background-color: #003854;
             color: #FFFFFF;
         }
-
-        /* Form Inputs */
-        div[data-baseweb="select"] > div {
-            border-color: #CBD5E1;
-            border-radius: 6px;
-        }
-
-        input[type="number"], input[type="text"] {
-            border-color: #CBD5E1 !important;
-            border-radius: 6px !important;
-        }
     </style>
     """, unsafe_allow_html=True)
 
 
 def render_sidebar_header():
-    """Renders clean corporate sidebar branding."""
+    """Renders clean student project sidebar branding."""
     with st.sidebar:
         st.markdown("""
         <div class="sidebar-brand-title">Cricket Performance</div>
@@ -264,14 +257,17 @@ def render_sidebar_header():
 
 
 def render_sidebar_footer():
-    """Renders consistent sidebar footer."""
+    """Renders real project attribution and dataset provenance."""
     with st.sidebar:
         st.markdown("""
         <div class="sidebar-footer">
-            Cricket Analytics Platform<br>
-            Developed for Infosys Springboard Evaluation
+            <strong>Project:</strong> Cricket Performance Analytics<br>
+            <strong>Developer:</strong> Annu Tiwari<br>
+            <strong>Program:</strong> Infosys Springboard<br>
+            <strong>Dataset:</strong> IPL (2008–2024) via Cricsheet/Kaggle
         </div>
         """, unsafe_allow_html=True)
+
 
 
 def get_plotly_layout(title: str = "", height: int = 380, xaxis_title: str = None, yaxis_title: str = None):
