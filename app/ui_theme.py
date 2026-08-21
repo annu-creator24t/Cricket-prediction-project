@@ -247,26 +247,26 @@ def apply_custom_css():
 
 
 def render_sidebar_header():
-    """Renders clean student project sidebar branding."""
+    """Renders clean sidebar branding."""
     with st.sidebar:
         st.markdown("""
         <div class="sidebar-brand-title">Cricket Performance</div>
         <div class="sidebar-brand-sub">Analytics</div>
-        <div class="sidebar-badge">Infosys Springboard Project</div>
+        <div class="sidebar-badge">IPL ML Analytics Platform</div>
         """, unsafe_allow_html=True)
 
 
 def render_sidebar_footer():
-    """Renders real project attribution and dataset provenance."""
+    """Renders clean project attribution and dataset provenance."""
     with st.sidebar:
         st.markdown("""
         <div class="sidebar-footer">
             <strong>Project:</strong> Cricket Performance Analytics<br>
             <strong>Developer:</strong> Annu Tiwari<br>
-            <strong>Program:</strong> Infosys Springboard<br>
             <strong>Dataset:</strong> IPL (2008–2024) via Cricsheet/Kaggle
         </div>
         """, unsafe_allow_html=True)
+
 
 
 

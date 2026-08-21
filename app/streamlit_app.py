@@ -31,10 +31,11 @@ st.divider()
 
 # Introduction
 st.markdown("""
-This project is an end-to-end Machine Learning web application developed as part of **Infosys Springboard**. 
-It evaluates historical Indian Premier League (IPL) ball-by-ball records (2008–2024) to predict individual player match outcomes 
-(expected runs for batsmen and expected wickets for bowlers) while providing interactive performance breakdowns and SHAP-based feature importance analysis.
+This project is an end-to-end Machine Learning web application that evaluates historical Indian Premier League (IPL) ball-by-ball records (2008–2024) 
+to predict individual player match outcomes (expected runs for batsmen and expected wickets for bowlers) while providing interactive performance breakdowns 
+and SHAP-based feature importance analysis.
 """)
+
 
 st.write("")
 
