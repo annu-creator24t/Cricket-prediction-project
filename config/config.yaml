@@ -1,30 +1,48 @@
 paths:
   raw_data: "data/raw/"
-  processed_data: "data/processed/final_dataset.csv"
-  batter_dataset: "data/processed/batter_dataset.csv"
-  bowler_dataset: "data/processed/bowler_dataset.csv"
-  model_dir: "models/"
-  batter_model: "models/best_batter_model.pkl"
-  bowler_model: "models/best_bowler_model.pkl"
-  pipeline_path: "models/feature_pipeline.pkl"
+  processed_data: "artifacts/processed/cleaned_data.csv"
+  batter_dataset: "artifacts/processed/batter_training_data.csv"
+  bowler_dataset: "artifacts/processed/bowler_training_data.csv"
+  model_dir: "artifacts/models/"
+  batter_model: "artifacts/models/batter_best_model.pkl"
+  bowler_model: "artifacts/models/bowler_best_model.pkl"
+  shap_dir: "artifacts/shap/"
 
 split:
-  date_column: "match_date"
-  split_date: "2022-01-01"
+  test_size: 0.20
+  time_aware: true
 
-model:
-  type: "RandomForest"
-  n_estimators: 200
-  max_depth: 8
+models:
+  candidate_models:
+    - "CatBoost"
+    - "XGBoost"
+    - "LightGBM"
+    - "RandomForest"
+    - "ExtraTrees"
   random_state: 42
 
 features:
-  numeric:
-    - rolling_avg_5
-    - career_avg
-    - venue_avg
-    - pvt_avg
-  categorical:
-    - venue
-    - batting_team
-    - bowling_team
+  batter:
+    categorical:
+      - batsman
+      - batting_team
+      - bowling_team
+      - venue
+    numeric:
+      - prev_runs
+      - last_5_avg
+      - last_10_avg
+      - career_avg
+    target: runs_next_match
+  bowler:
+    categorical:
+      - bowler
+      - bowling_team
+      - batting_team
+      - venue
+    numeric:
+      - prev_wickets
+      - last_5_wkts
+      - last_10_wkts
+      - career_wkt_avg
+    target: wickets_next_match

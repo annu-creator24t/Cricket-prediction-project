@@ -24,6 +24,7 @@ class ModelTrainer:
         print(f"Training started for: {role_name}")
         print("==============================")
 
+        # ---------------- TIME-AWARE SPLIT ----------------
         df = df.sort_values("date")
 
         split_index = int(len(df) * 0.8)
@@ -49,6 +50,7 @@ class ModelTrainer:
         X_test = test_df.drop(columns=drop_cols)
         y_test = test_df[target_column]
 
+        # ---------------- PREPROCESSOR ----------------
         categorical_cols = X_train.select_dtypes(include=["object"]).columns.tolist()
         numeric_cols = X_train.select_dtypes(exclude=["object"]).columns.tolist()
 
@@ -59,6 +61,24 @@ class ModelTrainer:
             ]
         )
 
+        # ---------------- BASELINE ----------------
+        if "last_10_avg" in X_test.columns:
+            baseline_pred = X_test["last_10_avg"]
+        elif "last_10_wkts" in X_test.columns:
+            baseline_pred = X_test["last_10_wkts"]
+        else:
+            baseline_pred = np.full(len(y_test), y_train.mean())
+
+        baseline_rmse = np.sqrt(mean_squared_error(y_test, baseline_pred))
+        baseline_mae = mean_absolute_error(y_test, baseline_pred)
+        baseline_r2 = r2_score(y_test, baseline_pred)
+
+        print("\nBaseline Results:")
+        print(f"RMSE: {baseline_rmse:.4f}")
+        print(f"MAE: {baseline_mae:.4f}")
+        print(f"R2: {baseline_r2:.4f}")
+
+        # ---------------- MODELS ----------------
         models = {
             "RandomForest": RandomForestRegressor(n_estimators=300, random_state=42),
             "ExtraTrees": ExtraTreesRegressor(n_estimators=300, random_state=42),
@@ -80,10 +100,12 @@ class ModelTrainer:
 
             print(f"\nTraining {name}...")
 
-            pipeline = Pipeline([
-                ("preprocessor", preprocessor),
-                ("model", model)
-            ])
+            pipeline = Pipeline(
+                steps=[
+                    ("preprocessor", preprocessor),
+                    ("model", model),
+                ]
+            )
 
             pipeline.fit(X_train, y_train)
             preds = pipeline.predict(X_test)
@@ -103,7 +125,17 @@ class ModelTrainer:
 
             print(f"{name} RMSE: {rmse:.4f}")
 
+        # ---------------- SAVE METRICS ----------------
         metrics_df = pd.DataFrame(results)
+
+        baseline_row = pd.DataFrame([{
+            "Model": "Baseline",
+            "RMSE": baseline_rmse,
+            "MAE": baseline_mae,
+            "R2": baseline_r2
+        }])
+
+        metrics_df = pd.concat([metrics_df, baseline_row], ignore_index=True)
 
         os.makedirs("artifacts/models", exist_ok=True)
         metrics_df.to_csv(
@@ -111,17 +143,22 @@ class ModelTrainer:
             index=False
         )
 
-        best_model_name = metrics_df.sort_values("RMSE").iloc[0]["Model"]
+        best_model_name = metrics_df[
+            metrics_df["Model"] != "Baseline"
+        ].sort_values("RMSE").iloc[0]["Model"]
         best_pipeline = trained_pipelines[best_model_name]
 
         print(f"\nBest Model for {role_name}: {best_model_name}")
 
-        # SHAP
+        # ---------------- SHAP EXPLAINABILITY ----------------
         print("Generating SHAP plots...")
 
-        X_test_transformed = best_pipeline.named_steps["preprocessor"].transform(X_test)
+        preprocessor_fitted = best_pipeline.named_steps["preprocessor"]
+        model_fitted = best_pipeline.named_steps["model"]
 
-        explainer = shap.TreeExplainer(best_pipeline.named_steps["model"])
+        X_test_transformed = preprocessor_fitted.transform(X_test)
+
+        explainer = shap.TreeExplainer(model_fitted)
         shap_values = explainer.shap_values(X_test_transformed)
 
         os.makedirs("artifacts/shap", exist_ok=True)
@@ -138,12 +175,14 @@ class ModelTrainer:
         plt.savefig(f"artifacts/shap/{role_name}_shap_importance.png")
         plt.close()
 
-        # Save Model
+        # ---------------- SAVE BEST MODEL ----------------
         joblib.dump(
             best_pipeline,
             f"artifacts/models/{role_name}_best_model.pkl"
         )
 
+        print(f"Best model saved at: artifacts/models/{role_name}_best_model.pkl")
         print("Training Completed.\n")
 
         return best_pipeline
+
