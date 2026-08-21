@@ -12,7 +12,14 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from src.components.predictor import get_player_stats, load_dataset_metadata
-from app.ui_theme import apply_custom_css, render_sidebar_header, render_sidebar_footer, get_plotly_layout
+from app.ui_theme import (
+    apply_custom_css,
+    render_sidebar_header,
+    render_sidebar_footer,
+    render_page_header,
+    render_section_header,
+    get_plotly_layout
+)
 
 # Page Configuration
 st.set_page_config(
@@ -27,16 +34,22 @@ apply_custom_css()
 render_sidebar_header()
 
 # Header
-st.title("Player Performance Analytics")
-st.caption("Historical performance, recent form, match-level breakdowns, and model explainability.")
-st.divider()
+render_page_header(
+    eyebrow="Intelligence & Diagnostics",
+    title="Player Performance Analytics",
+    subtitle="Historical trends, scoring distributions, opponent & venue breakdowns, and SHAP explainability insights."
+)
 
 # -------------------------------------------------------------
 # 1. PLAYER SELECTION
 # -------------------------------------------------------------
-st.subheader("1. Player Selection")
+render_section_header(
+    eyebrow="Step 01",
+    title="Select Player Profile",
+    subtitle="Choose discipline role and player to load historical performance analytics."
+)
 
-col_role, col_player = st.columns([1, 2])
+col_role, col_player = st.columns([1, 2.5])
 
 with col_role:
     role = st.selectbox("Player Role", ["Batter", "Bowler"], index=0)
@@ -74,10 +87,30 @@ if len(player_df) < 3 or not player_stats:
     st.warning("Insufficient match history for detailed statistical analysis (minimum 3 matches required).")
     st.stop()
 
+last_team = player_stats.get("last_team", "IPL Franchise")
+total_matches = len(player_df)
+
+# -------------------------------------------------------------
+# PLAYER IDENTITY HEADER
+# -------------------------------------------------------------
+st.markdown(f"""
+<div class="player-banner">
+    <div class="player-banner-eyebrow">Player Profile &bull; {role}</div>
+    <div class="player-banner-name">{player}</div>
+    <div class="player-banner-meta">
+        Franchise: <strong>{last_team}</strong> &bull; Total Tracked Matches: <strong>{total_matches}</strong> &bull; Career Dataset: <strong>IPL 2008–2024</strong>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 # -------------------------------------------------------------
 # 2. PERFORMANCE SNAPSHOT
 # -------------------------------------------------------------
-st.subheader(f"2. Performance Snapshot — {player}")
+render_section_header(
+    eyebrow="Form Snapshot",
+    title=f"Performance Benchmarks ({player})",
+    subtitle="Recent match output compared against short-term, medium-term, and career averages."
+)
 
 last_match_val = player_stats["prev_runs"] if role_key == "batter" else player_stats["prev_wickets"]
 last_5_avg = player_stats["last_5_avg"] if role_key == "batter" else player_stats["last_5_wkts"]
@@ -85,7 +118,7 @@ last_10_avg = player_stats["last_10_avg"] if role_key == "batter" else player_st
 career_avg = player_stats["career_avg"] if role_key == "batter" else player_stats["career_wkt_avg"]
 
 k1, k2, k3, k4 = st.columns(4)
-k1.metric("Last Match Score", f"{last_match_val:.0f} {unit_label}")
+k1.metric("Last Match Output", f"{last_match_val:.0f} {unit_label}")
 k2.metric("Last 5 Matches Avg", f"{last_5_avg:.2f} {unit_label}")
 k3.metric("Last 10 Matches Avg", f"{last_10_avg:.2f} {unit_label}")
 k4.metric("Career Average", f"{career_avg:.2f} {unit_label}")
@@ -98,7 +131,13 @@ st.write("")
 col_trend, col_dist = st.columns(2)
 
 with col_trend:
-    st.subheader("Recent Match Trend (Last 15 Fixtures)")
+    st.markdown("""
+    <div class="chart-container-card">
+        <div class="chart-header-title">Recent Match Trend (Last 15 Fixtures)</div>
+        <div class="chart-header-sub">Chronological scoring timeline across recent tournament appearances</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     trend_df = player_df.tail(15).copy()
     trend_df["match_seq"] = [f"M{i+1}" for i in range(len(trend_df))]
     
@@ -108,7 +147,7 @@ with col_trend:
         y=value_col,
         markers=True,
         hover_data={"date": True, value_col: True, "venue": True},
-        labels={"match_seq": "Match Sequence (Oldest → Latest)", value_col: unit_label, "date": "Date"}
+        labels={"match_seq": "Match Sequence (Chronological)", value_col: unit_label, "date": "Date"}
     )
     fig1.update_traces(
         line_color="#006699",
@@ -118,19 +157,25 @@ with col_trend:
     layout1 = get_plotly_layout(
         title=f"{player} — Match Output Timeline",
         height=350,
-        xaxis_title="Match Sequence (Recent 15 Matches)",
+        xaxis_title="Match Sequence (Recent Fixtures)",
         yaxis_title=unit_label
     )
     fig1.update_layout(**layout1)
     st.plotly_chart(fig1, use_container_width=True)
 
 with col_dist:
-    st.subheader("Performance Distribution")
+    st.markdown("""
+    <div class="chart-container-card">
+        <div class="chart-header-title">Score Frequency Distribution</div>
+        <div class="chart-header-sub">Histogram of match performances across all recorded career fixtures</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     fig2 = px.histogram(
         player_df,
         x=value_col,
-        nbins=12,
-        labels={value_col: unit_label, "count": "Match Frequency"}
+        nbins=14,
+        labels={value_col: f"{unit_label} Scored per Match", "count": "Match Frequency"}
     )
     fig2.update_traces(
         marker_color="#0284C7",
@@ -138,10 +183,10 @@ with col_dist:
         marker_line_width=1
     )
     layout2 = get_plotly_layout(
-        title=f"{player} — Score Frequency Distribution",
+        title=f"{player} — Performance Distribution",
         height=350,
-        xaxis_title=f"{unit_label} Scored per Match",
-        yaxis_title="Match Count"
+        xaxis_title=f"{unit_label} per Fixture",
+        yaxis_title="Frequency (Matches)"
     )
     fig2.update_layout(**layout2)
     st.plotly_chart(fig2, use_container_width=True)
@@ -152,7 +197,13 @@ with col_dist:
 col_venue, col_opp = st.columns(2)
 
 with col_venue:
-    st.subheader("Top Venues by Average Output")
+    st.markdown("""
+    <div class="chart-container-card">
+        <div class="chart-header-title">Venue Performance Breakdown</div>
+        <div class="chart-header-sub">Average output across top 8 stadium venues (minimum matches filtered)</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     venue_avg = (
         player_df.groupby("venue")[value_col]
         .agg(["mean", "count"])
@@ -181,7 +232,13 @@ with col_venue:
     st.plotly_chart(fig3, use_container_width=True)
 
 with col_opp:
-    st.subheader("Opposition Breakdown")
+    st.markdown("""
+    <div class="chart-container-card">
+        <div class="chart-header-title">Opposition Head-to-Head Breakdown</div>
+        <div class="chart-header-sub">Historical average output against major IPL franchise opponents</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     opp_avg = (
         player_df.groupby(opponent_col)[value_col]
         .agg(["mean", "count"])
@@ -200,7 +257,7 @@ with col_opp:
     )
     fig4.update_traces(marker_color="#0369A1")
     layout4 = get_plotly_layout(
-        title=f"Performance vs Franchise Opponents",
+        title=f"Performance vs Opponent Franchises",
         height=350,
         xaxis_title="Opponent Team",
         yaxis_title=f"Average {unit_label}"
@@ -212,38 +269,44 @@ with col_opp:
 # -------------------------------------------------------------
 # 5. CONSISTENCY & MOMENTUM
 # -------------------------------------------------------------
-st.subheader("5. Form Volatility & Momentum Analysis")
+render_section_header(
+    eyebrow="Form Diagnostics",
+    title="Consistency & Momentum Analysis",
+    subtitle="Evaluation of performance dispersion and short-term trajectory vs baseline."
+)
 
 std_dev = player_df[value_col].std()
 momentum = last_5_avg - last_10_avg
 
 c1, c2 = st.columns(2)
-c1.metric(
-    label="Performance Volatility (Std Dev)",
-    value=f"{std_dev:.2f}",
-    help="Standard deviation of match scores. Lower value indicates higher consistency."
-)
-c2.metric(
-    label="Short-Term Momentum Index",
-    value=f"{momentum:+.2f}",
-    help="Difference between Last 5 Matches Average and Last 10 Matches Average."
-)
+with c1:
+    st.metric(
+        label="Performance Volatility (Std Dev)",
+        value=f"{std_dev:.2f}",
+        help="Standard deviation of match scores. Lower value indicates higher consistency."
+    )
+with c2:
+    st.metric(
+        label="Short-Term Momentum Index",
+        value=f"{momentum:+.2f}",
+        help="Difference between Last 5 Matches Average and Last 10 Matches Average."
+    )
 
 if momentum > 0:
-    st.success(f"**Positive Momentum**: {player}'s last 5 matches average ({last_5_avg:.2f}) is trending +{momentum:.2f} above their 10-match baseline ({last_10_avg:.2f}).")
+    st.success(f"**Positive Momentum**: {player}'s last 5 matches average ({last_5_avg:.2f}) is trending **+{momentum:.2f}** above their 10-match baseline ({last_10_avg:.2f}).")
 else:
-    st.info(f"**Neutral / Consolidating Momentum**: {player}'s last 5 matches average ({last_5_avg:.2f}) is tracking {momentum:.2f} relative to their 10-match baseline ({last_10_avg:.2f}).")
+    st.info(f"**Neutral / Consolidating Momentum**: {player}'s last 5 matches average ({last_5_avg:.2f}) is tracking **{momentum:.2f}** relative to their 10-match baseline ({last_10_avg:.2f}).")
 
 st.divider()
 
 # -------------------------------------------------------------
 # 6. MODEL INSIGHTS (SHAP EXPLAINABILITY)
 # -------------------------------------------------------------
-st.subheader("6. Model Insights (SHAP Explainability)")
-st.markdown("""
-SHAP (SHapley Additive exPlanations) values show how much each feature (such as recent 5-match form, career average, opposing team, and match venue) 
-contributed to increasing or decreasing the regression model's prediction relative to the baseline dataset average.
-""")
+render_section_header(
+    eyebrow="Explainable AI",
+    title="Model Insights & Feature Importance (SHAP)",
+    subtitle="SHapley Additive exPlanations quantify the relative contribution of each feature to the model's predictions."
+)
 
 colA, colB = st.columns(2)
 
