@@ -13,9 +13,20 @@ def apply_custom_css():
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Hide Streamlit default Deploy button, top header & main menu */
+        #MainMenu {visibility: hidden; display: none !important;}
+        footer {visibility: hidden; display: none !important;}
+        header[data-testid="stHeader"] {background: transparent; height: 0; min-height: 0;}
+        .stDeployButton {display: none !important;}
+        button[data-testid="stDeployButton"] {display: none !important;}
+        div[data-testid="stToolbar"] {display: none !important;}
+        div[data-testid="stDecoration"] {display: none !important;}
+        div[data-testid="stStatusWidget"] {display: none !important;}
+        div[data-testid="stHeaderActionElements"] {display: none !important;}
+
         /* Top header padding normalization */
         .block-container {
-            padding-top: 2rem !important;
+            padding-top: 1.5rem !important;
             padding-bottom: 3rem !important;
             max-width: 1200px;
         }
