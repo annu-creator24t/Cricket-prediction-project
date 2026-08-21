@@ -1,0 +1,30 @@
+paths:
+  raw_data: "data/raw/"
+  processed_data: "data/processed/final_dataset.csv"
+  batter_dataset: "data/processed/batter_dataset.csv"
+  bowler_dataset: "data/processed/bowler_dataset.csv"
+  model_dir: "models/"
+  batter_model: "models/best_batter_model.pkl"
+  bowler_model: "models/best_bowler_model.pkl"
+  pipeline_path: "models/feature_pipeline.pkl"
+
+split:
+  date_column: "match_date"
+  split_date: "2022-01-01"
+
+model:
+  type: "RandomForest"
+  n_estimators: 200
+  max_depth: 8
+  random_state: 42
+
+features:
+  numeric:
+    - rolling_avg_5
+    - career_avg
+    - venue_avg
+    - pvt_avg
+  categorical:
+    - venue
+    - batting_team
+    - bowling_team
