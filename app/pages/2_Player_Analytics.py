@@ -5,14 +5,24 @@ import pandas as pd
 import plotly.express as px
 from PIL import Image
 
-# Add project root to sys.path
+# Path configuration for both local execution and Streamlit Community Cloud
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
+APP_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
-from src.components.predictor import get_player_stats, load_dataset_metadata
-from app.ui_theme import apply_custom_css, render_sidebar_header, render_sidebar_footer, get_plotly_layout
+for p in [PROJECT_ROOT, APP_DIR, CURRENT_DIR]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    from src.components.predictor import get_player_stats, load_dataset_metadata
+except ImportError:
+    from components.predictor import get_player_stats, load_dataset_metadata
+
+try:
+    from app.ui_theme import apply_custom_css, render_sidebar_header, render_sidebar_footer, get_plotly_layout
+except ImportError:
+    from ui_theme import apply_custom_css, render_sidebar_header, render_sidebar_footer, get_plotly_layout
 
 # Page Configuration
 st.set_page_config(
